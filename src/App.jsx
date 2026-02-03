@@ -41,6 +41,7 @@ function App() {
   // UI State
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [currentView, setCurrentView] = useState(VIEWS.LANDING);
+  const [showPrivacy, setShowPrivacy] = useState(false);
 
   // Data State
   const [topic, setTopic] = useState('');
@@ -275,11 +276,53 @@ function App() {
                 >
                   🎓 Go Deeper
                 </button>
-                <button className="btn-secondary" onClick={() => handleExport('markdown')} title="Download as Markdown">
-                  📥
+                <button
+                  className="btn-export"
+                  onClick={() => handleExport('markdown')}
+                  title="Download as Markdown"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.4rem',
+                    padding: '0.6rem 1rem',
+                    background: 'linear-gradient(135deg, #10b981, #059669)',
+                    border: 'none',
+                    borderRadius: '10px',
+                    color: '#fff',
+                    fontWeight: 600,
+                    fontSize: '0.85rem',
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 15px rgba(16, 185, 129, 0.3)',
+                    transition: 'all 0.3s ease'
+                  }}
+                  onMouseOver={e => { e.target.style.transform = 'translateY(-2px)'; e.target.style.boxShadow = '0 6px 20px rgba(16, 185, 129, 0.4)'; }}
+                  onMouseOut={e => { e.target.style.transform = 'translateY(0)'; e.target.style.boxShadow = '0 4px 15px rgba(16, 185, 129, 0.3)'; }}
+                >
+                  📥 Download
                 </button>
-                <button className="btn-secondary" onClick={() => handleExport('print')} title="Print">
-                  🖨️
+                <button
+                  className="btn-export"
+                  onClick={() => handleExport('print')}
+                  title="Print Materials"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.4rem',
+                    padding: '0.6rem 1rem',
+                    background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)',
+                    border: 'none',
+                    borderRadius: '10px',
+                    color: '#fff',
+                    fontWeight: 600,
+                    fontSize: '0.85rem',
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 15px rgba(139, 92, 246, 0.3)',
+                    transition: 'all 0.3s ease'
+                  }}
+                  onMouseOver={e => { e.target.style.transform = 'translateY(-2px)'; e.target.style.boxShadow = '0 6px 20px rgba(139, 92, 246, 0.4)'; }}
+                  onMouseOut={e => { e.target.style.transform = 'translateY(0)'; e.target.style.boxShadow = '0 4px 15px rgba(139, 92, 246, 0.3)'; }}
+                >
+                  🖨️ Print
                 </button>
               </div>
             </div>
@@ -319,9 +362,98 @@ function App() {
         )}
 
         {/* Footer */}
-        <footer className="app-footer">
-          <p>Powered by AI • Built by Nazli Tech School</p>
+        <footer className="app-footer" style={{
+          padding: '1.5rem 2rem',
+          borderTop: '1px solid var(--glass-border)',
+          background: 'rgba(0,0,0,0.3)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '1rem'
+        }}>
+          <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+            Powered by AI • Built by <span style={{ color: 'var(--accent)' }}>Nazli Tech School</span>
+          </p>
+          <div style={{ display: 'flex', gap: '1.5rem' }}>
+            <button
+              onClick={() => setShowPrivacy(true)}
+              style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.85rem' }}
+              onMouseOver={e => e.target.style.color = 'var(--accent)'}
+              onMouseOut={e => e.target.style.color = 'var(--text-muted)'}
+            >
+              Privacy Policy
+            </button>
+            <span style={{ color: 'var(--glass-border)' }}>•</span>
+            <button
+              onClick={() => setShowPrivacy(true)}
+              style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.85rem' }}
+              onMouseOver={e => e.target.style.color = 'var(--accent)'}
+              onMouseOut={e => e.target.style.color = 'var(--text-muted)'}
+            >
+              Terms of Use
+            </button>
+          </div>
         </footer>
+
+        {/* Privacy Policy Modal */}
+        {showPrivacy && (
+          <div
+            onClick={() => setShowPrivacy(false)}
+            style={{
+              position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+              background: 'rgba(0,0,0,0.9)', display: 'flex',
+              alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: '1rem'
+            }}
+          >
+            <div
+              onClick={e => e.stopPropagation()}
+              className="glass-card animate-slide-up"
+              style={{ maxWidth: '600px', width: '100%', padding: '2rem', maxHeight: '85vh', overflow: 'auto' }}
+            >
+              <h2 style={{ marginBottom: '1.5rem', color: 'var(--accent)' }}>🔒 Privacy Policy</h2>
+
+              <div style={{ color: 'var(--text-muted)', lineHeight: 1.8 }}>
+                <p style={{ marginBottom: '1rem' }}><strong>Effective Date:</strong> February 2026</p>
+
+                <h4 style={{ color: 'var(--text-main)', marginTop: '1.5rem', marginBottom: '0.5rem' }}>1. Information We Collect</h4>
+                <p>We collect minimal data to provide our service:</p>
+                <ul style={{ paddingLeft: '1.5rem', marginBottom: '1rem' }}>
+                  <li>Google account info (name, email) for authentication</li>
+                  <li>Topics you search to generate educational content</li>
+                  <li>Your learning progress and quiz scores</li>
+                </ul>
+
+                <h4 style={{ color: 'var(--text-main)', marginTop: '1.5rem', marginBottom: '0.5rem' }}>2. How We Use Your Data</h4>
+                <ul style={{ paddingLeft: '1.5rem', marginBottom: '1rem' }}>
+                  <li>To generate personalized study materials</li>
+                  <li>To track your learning progress</li>
+                  <li>To improve our AI recommendations</li>
+                </ul>
+
+                <h4 style={{ color: 'var(--text-main)', marginTop: '1.5rem', marginBottom: '0.5rem' }}>3. Data Storage</h4>
+                <p>Your data is stored securely using Firebase services. We do not sell or share your personal information with third parties.</p>
+
+                <h4 style={{ color: 'var(--text-main)', marginTop: '1.5rem', marginBottom: '0.5rem' }}>4. AI Services</h4>
+                <p>We use GPT-4o Mini, Gemini, and OpenRouter APIs to generate educational content. Your search topics are sent to these services to create personalized materials.</p>
+
+                <h4 style={{ color: 'var(--text-main)', marginTop: '1.5rem', marginBottom: '0.5rem' }}>5. Your Rights</h4>
+                <p>You can request deletion of your account and data at any time by contacting us.</p>
+
+                <h4 style={{ color: 'var(--text-main)', marginTop: '1.5rem', marginBottom: '0.5rem' }}>6. Contact</h4>
+                <p>For questions about this policy, contact: <span style={{ color: 'var(--accent)' }}>nazlitechschool@gmail.com</span></p>
+              </div>
+
+              <button
+                className="btn-primary"
+                onClick={() => setShowPrivacy(false)}
+                style={{ width: '100%', marginTop: '2rem', padding: '0.75rem' }}
+              >
+                I Understand
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
