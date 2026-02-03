@@ -1,38 +1,32 @@
 /**
  * Settings Service
- * Manages user preferences and API keys
- * 
- * API Priority: OpenRouter → Gemini → Wikipedia (fallback)
- * Users can add their own keys or use the embedded Gemini key
+ * API Priority: GPT-4o → Gemini → Wikipedia
  */
 
 const SETTINGS_KEY = 'studycraft_settings';
 
-// Embedded Gemini API key for demo purposes
-// Get your own free key at: https://makersuite.google.com/app/apikey
+// Embedded API keys for demo
 const EMBEDDED_GEMINI_KEY = 'AIzaSyDEZCCk7U6e8S1jR0l2FEybXuq7kqjKVHw';
+const EMBEDDED_RAPIDAPI_KEY = '628a008275msh65a3ab23b2318d4p1f4a2cjsn481bddb5b5ae';
 
 const DEFAULT_SETTINGS = {
-    gemini_api_key: EMBEDDED_GEMINI_KEY, // Embedded for demo
-    openrouter_api_key: '', // User can add their own
+    gemini_api_key: EMBEDDED_GEMINI_KEY,
+    openrouter_api_key: '',
+    rapidapi_key: EMBEDDED_RAPIDAPI_KEY, // GPT-4o Mini
     pexels_api_key: 'EIdFnChjLG764EvXH3aTHNvDyGEd8xJ1dkk3ZOaxxzrifQESxhCCXraq',
-    learning_mode: 'ai', // Default to AI mode (uses Gemini)
+    learning_mode: 'ai',
     auto_fetch_images: true,
     default_difficulty: 'intermediate'
 };
 
-/**
- * Get all settings
- */
 export const getSettings = () => {
     const stored = localStorage.getItem(SETTINGS_KEY);
     if (stored) {
         try {
             const parsed = JSON.parse(stored);
-            // Ensure we always have the embedded Gemini key if none is set
-            if (!parsed.gemini_api_key) {
-                parsed.gemini_api_key = EMBEDDED_GEMINI_KEY;
-            }
+            // Ensure embedded keys
+            if (!parsed.gemini_api_key) parsed.gemini_api_key = EMBEDDED_GEMINI_KEY;
+            if (!parsed.rapidapi_key) parsed.rapidapi_key = EMBEDDED_RAPIDAPI_KEY;
             return { ...DEFAULT_SETTINGS, ...parsed };
         } catch (error) {
             console.error('Error parsing settings:', error);
@@ -42,16 +36,10 @@ export const getSettings = () => {
     return DEFAULT_SETTINGS;
 };
 
-/**
- * Save settings
- */
 export const saveSettings = (settings) => {
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
 };
 
-/**
- * Update specific setting
- */
 export const updateSetting = (key, value) => {
     const settings = getSettings();
     settings[key] = value;
@@ -59,41 +47,26 @@ export const updateSetting = (key, value) => {
     return settings;
 };
 
-/**
- * Get specific setting
- */
 export const getSetting = (key) => {
     const settings = getSettings();
     return settings[key];
 };
 
-/**
- * Reset to defaults (clears localStorage)
- */
 export const resetSettings = () => {
     localStorage.removeItem(SETTINGS_KEY);
     return DEFAULT_SETTINGS;
 };
 
-/**
- * Check if Gemini key is configured
- */
 export const hasGeminiKey = () => {
     const key = getSetting('gemini_api_key');
     return key && key.trim().length > 0;
 };
 
-/**
- * Check if OpenRouter key is configured
- */
 export const hasOpenRouterKey = () => {
     const key = getSetting('openrouter_api_key');
     return key && key.trim().length > 0;
 };
 
-/**
- * Check if using AI mode
- */
 export const isAIMode = () => {
     return getSetting('learning_mode') === 'ai';
 };
