@@ -1,14 +1,14 @@
 /**
  * Project Ideas Service - FINAL EDITION
- * Gets API key from settings internally
- * Uses OpenRouter → Gemini → Fallback chain
+ * Fallback chain: OpenRouter → Gemini → GPT-4o Mini → Generated
  */
 
 import { getSettings } from './settingsService';
 
-/**
- * Call OpenRouter API
- */
+// Embedded RapidAPI key for GPT-4o Mini - THE SAVIOUR
+const RAPIDAPI_KEY = '628a008275msh65a3ab23b2318d4p1f4a2cjsn481bddb5b5ae';
+
+// API 1: OpenRouter
 async function callOpenRouter(prompt, apiKey) {
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
@@ -25,18 +25,12 @@ async function callOpenRouter(prompt, apiKey) {
             max_tokens: 2000
         })
     });
-
-    if (!response.ok) {
-        throw new Error(`OpenRouter failed: ${response.status}`);
-    }
-
+    if (!response.ok) throw new Error(`OpenRouter: ${response.status}`);
     const data = await response.json();
     return data.choices?.[0]?.message?.content || '';
 }
 
-/**
- * Call Gemini API
- */
+// API 2: Gemini
 async function callGemini(prompt, apiKey) {
     const response = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
@@ -49,7 +43,6 @@ async function callGemini(prompt, apiKey) {
             })
         }
     );
-
     const data = await response.json();
     if (response.ok && data.candidates?.[0]?.content?.parts?.[0]?.text) {
         return data.candidates[0].content.parts[0].text;
@@ -57,150 +50,101 @@ async function callGemini(prompt, apiKey) {
     throw new Error('Gemini failed');
 }
 
-/**
- * Generate fallback project ideas
- */
+// API 3: GPT-4o Mini via RapidAPI - THE SAVIOUR
+async function callGPT4oMini(prompt) {
+    console.log('💎 Projects: Trying GPT-4o Mini (saviour)...');
+    const response = await fetch('https://gpt-4o-mini2.p.rapidapi.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'x-rapidapi-host': 'gpt-4o-mini2.p.rapidapi.com',
+            'x-rapidapi-key': RAPIDAPI_KEY
+        },
+        body: JSON.stringify({
+            model: 'gpt-4o-mini',
+            messages: [{ role: 'user', content: prompt }],
+            stream: false
+        })
+    });
+    if (!response.ok) throw new Error(`GPT-4o Mini: ${response.status}`);
+    const data = await response.json();
+    return data.choices?.[0]?.message?.content || '';
+}
+
+// Fallback projects generator
 function generateFallbackProjects(topic) {
+    console.log('📚 Using generated fallback projects');
     return {
         topic,
         projects: {
             beginner: [
-                {
-                    title: `${topic} Basics`,
-                    description: 'Start with fundamentals and build a solid foundation',
-                    skills: ['Research', 'Note-taking'],
-                    timeEstimate: '1-2 hours',
-                    tools: ['Internet', 'Notebook'],
-                    tags: ['beginner', 'foundation']
-                },
-                {
-                    title: `${topic} Mind Map`,
-                    description: 'Create a visual representation of key concepts',
-                    skills: ['Visual thinking', 'Organization'],
-                    timeEstimate: '1 hour',
-                    tools: ['Paper or digital tool'],
-                    tags: ['beginner', 'visual']
-                }
+                { title: `${topic} Basics`, description: 'Build a solid foundation with fundamental concepts', skills: ['Research', 'Note-taking'], timeEstimate: '1-2 hours', tools: ['Internet', 'Notebook'], tags: ['beginner', 'foundation'] },
+                { title: `${topic} Mind Map`, description: 'Create a visual map of key concepts', skills: ['Visual thinking', 'Organization'], timeEstimate: '1 hour', tools: ['Paper or digital tool'], tags: ['beginner', 'visual'] }
             ],
             intermediate: [
-                {
-                    title: `${topic} Deep Dive`,
-                    description: 'Analyze and compare different aspects of this topic',
-                    skills: ['Analysis', 'Critical thinking'],
-                    timeEstimate: '3-5 hours',
-                    tools: ['Research tools', 'Spreadsheet'],
-                    tags: ['intermediate', 'analysis']
-                },
-                {
-                    title: `${topic} Presentation`,
-                    description: 'Build a comprehensive presentation teaching others',
-                    skills: ['Communication', 'Design'],
-                    timeEstimate: '4-6 hours',
-                    tools: ['Presentation software'],
-                    tags: ['intermediate', 'teaching']
-                }
+                { title: `${topic} Deep Analysis`, description: 'Compare and contrast different aspects', skills: ['Analysis', 'Critical thinking'], timeEstimate: '3-5 hours', tools: ['Research tools'], tags: ['intermediate', 'analysis'] },
+                { title: `${topic} Presentation`, description: 'Create a comprehensive teaching presentation', skills: ['Communication', 'Design'], timeEstimate: '4-6 hours', tools: ['Presentation software'], tags: ['intermediate', 'teaching'] }
             ],
             advanced: [
-                {
-                    title: `${topic} Mastery Project`,
-                    description: 'Create an original contribution or build something significant',
-                    skills: ['Synthesis', 'Innovation', 'Problem-solving'],
-                    timeEstimate: '1-2 weeks',
-                    tools: ['Various specialized tools'],
-                    tags: ['advanced', 'creative']
-                }
+                { title: `${topic} Original Project`, description: 'Build something innovative using your knowledge', skills: ['Synthesis', 'Innovation', 'Problem-solving'], timeEstimate: '1-2 weeks', tools: ['Various specialized tools'], tags: ['advanced', 'creative'] }
             ]
         }
     };
 }
 
 /**
- * Generate project ideas for a topic
- * Gets API key from settings internally
+ * Generate project ideas
+ * Fallback chain: OpenRouter → Gemini → GPT-4o Mini → Generated
  */
 export const generateProjectIdeas = async (topic) => {
     const settings = getSettings();
 
-    const prompt = `Generate creative project ideas for learning about "${topic}".
-
-Return JSON format:
+    const prompt = `Generate creative project ideas for "${topic}". Return JSON:
 {
     "topic": "${topic}",
     "projects": {
-        "beginner": [
-            {
-                "title": "Project name",
-                "description": "What the project does and what you'll learn",
-                "skills": ["skill 1", "skill 2"],
-                "timeEstimate": "1-2 hours",
-                "tools": ["tool 1", "tool 2"],
-                "tags": ["beginner", "tag"]
-            }
-        ],
-        "intermediate": [
-            {
-                "title": "Project name",
-                "description": "What the project does",
-                "skills": ["skills learned"],
-                "timeEstimate": "3-5 hours",
-                "tools": ["tools needed"],
-                "tags": ["intermediate", "tag"]
-            }
-        ],
-        "advanced": [
-            {
-                "title": "Project name",
-                "description": "What the project does",
-                "skills": ["skills learned"],
-                "timeEstimate": "1-2 weeks",
-                "tools": ["tools needed"],
-                "tags": ["advanced", "tag"]
-            }
-        ]
+        "beginner": [{"title":"...","description":"...","skills":["..."],"timeEstimate":"1-2 hours","tools":["..."],"tags":["beginner"]}],
+        "intermediate": [{"title":"...","description":"...","skills":["..."],"timeEstimate":"3-5 hours","tools":["..."],"tags":["intermediate"]}],
+        "advanced": [{"title":"...","description":"...","skills":["..."],"timeEstimate":"1-2 weeks","tools":["..."],"tags":["advanced"]}]
     }
 }
+Generate 2 projects per level. Be creative!`;
 
-Generate 2 projects per level. Be creative and practical!`;
+    let content = null;
 
-    try {
-        let content = null;
-
-        // Try OpenRouter first
-        if (settings.openrouter_api_key && settings.openrouter_api_key.trim()) {
-            try {
-                console.log('💡 Project Ideas: Using OpenRouter');
-                content = await callOpenRouter(prompt, settings.openrouter_api_key);
-            } catch (error) {
-                console.warn('⚠️ OpenRouter failed:', error.message);
-            }
-        }
-
-        // Fallback to Gemini
-        if (!content && settings.gemini_api_key && settings.gemini_api_key.trim()) {
-            try {
-                console.log('💡 Project Ideas: Using Gemini');
-                content = await callGemini(prompt, settings.gemini_api_key);
-            } catch (error) {
-                console.warn('⚠️ Gemini failed:', error.message);
-            }
-        }
-
-        // Parse response
-        if (content) {
-            const jsonMatch = content.match(/\{[\s\S]*\}/);
-            if (jsonMatch) {
-                return JSON.parse(jsonMatch[0]);
-            }
-        }
-
-        // Fallback to generated projects
-        console.log('💡 Using fallback projects');
-        return generateFallbackProjects(topic);
-
-    } catch (error) {
-        console.error('Project Ideas Error:', error);
-        return generateFallbackProjects(topic);
+    // 1. Try OpenRouter
+    if (!content && settings.openrouter_api_key?.trim()) {
+        try {
+            console.log('💡 Projects: Using OpenRouter');
+            content = await callOpenRouter(prompt, settings.openrouter_api_key);
+        } catch (e) { console.warn('⚠️ OpenRouter failed:', e.message); }
     }
+
+    // 2. Try Gemini
+    if (!content && settings.gemini_api_key?.trim()) {
+        try {
+            console.log('💡 Projects: Using Gemini');
+            content = await callGemini(prompt, settings.gemini_api_key);
+        } catch (e) { console.warn('⚠️ Gemini failed:', e.message); }
+    }
+
+    // 3. Try GPT-4o Mini (THE SAVIOUR)
+    if (!content) {
+        try {
+            content = await callGPT4oMini(prompt);
+        } catch (e) { console.warn('⚠️ GPT-4o Mini failed:', e.message); }
+    }
+
+    // Parse response
+    if (content) {
+        try {
+            const jsonMatch = content.match(/\{[\s\S]*\}/);
+            if (jsonMatch) return JSON.parse(jsonMatch[0]);
+        } catch (e) { console.warn('JSON parse failed'); }
+    }
+
+    // 4. Fallback to generated projects
+    return generateFallbackProjects(topic);
 };
 
 export default { generateProjectIdeas };
