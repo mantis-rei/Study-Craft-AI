@@ -70,16 +70,29 @@ function App() {
       const useAI = settings.learning_mode === 'ai';
       let result;
 
-      // Priority: OpenRouter > Gemini > Wikipedia (with fallback)
+      // Priority: OpenRouter → Gemini → Wikipedia
       if (useAI && settings.openrouter_api_key) {
+        // Try OpenRouter first
         try {
           console.log('🤖 Using OpenRouter API');
           result = await generateWithOpenRouter(currentTopic, settings.openrouter_api_key);
         } catch (apiError) {
-          console.warn('⚠️ OpenRouter failed, falling back to Wikipedia:', apiError.message);
-          result = await generateFromWikipedia(currentTopic);
+          console.warn('⚠️ OpenRouter failed:', apiError.message);
+          // Fallback to Gemini
+          if (settings.gemini_api_key) {
+            try {
+              console.log('🌟 Falling back to Gemini API');
+              result = await generateContent(currentTopic, settings.gemini_api_key);
+            } catch (geminiError) {
+              console.warn('⚠️ Gemini also failed, using Wikipedia:', geminiError.message);
+              result = await generateFromWikipedia(currentTopic);
+            }
+          } else {
+            result = await generateFromWikipedia(currentTopic);
+          }
         }
       } else if (useAI && settings.gemini_api_key) {
+        // Use Gemini directly
         try {
           console.log('🌟 Using Gemini API');
           result = await generateContent(currentTopic, settings.gemini_api_key);
@@ -88,6 +101,7 @@ function App() {
           result = await generateFromWikipedia(currentTopic);
         }
       } else {
+        // No AI keys, use Wikipedia
         console.log('📚 Using Wikipedia mode');
         result = await generateFromWikipedia(currentTopic);
       }

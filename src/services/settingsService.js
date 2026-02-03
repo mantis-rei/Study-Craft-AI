@@ -1,16 +1,22 @@
 /**
  * Settings Service
- * Manages user preferences and API keys in localStorage
- * NOTE: Users need to provide their own OpenRouter API key from https://openrouter.ai
+ * Manages user preferences and API keys
+ * 
+ * API Priority: OpenRouter → Gemini → Wikipedia (fallback)
+ * Users can add their own keys or use the embedded Gemini key
  */
 
 const SETTINGS_KEY = 'studycraft_settings';
 
+// Embedded Gemini API key for demo purposes
+// Get your own free key at: https://makersuite.google.com/app/apikey
+const EMBEDDED_GEMINI_KEY = 'AIzaSyDEZCCk7U6e8S1jR0l2FEybXuq7kqjKVHw';
+
 const DEFAULT_SETTINGS = {
-    gemini_api_key: '',
-    openrouter_api_key: '', // Users must provide their own key
+    gemini_api_key: EMBEDDED_GEMINI_KEY, // Embedded for demo
+    openrouter_api_key: '', // User can add their own
     pexels_api_key: 'EIdFnChjLG764EvXH3aTHNvDyGEd8xJ1dkk3ZOaxxzrifQESxhCCXraq',
-    learning_mode: 'mock', // Start in mock mode until user adds API key
+    learning_mode: 'ai', // Default to AI mode (uses Gemini)
     auto_fetch_images: true,
     default_difficulty: 'intermediate'
 };
@@ -22,7 +28,12 @@ export const getSettings = () => {
     const stored = localStorage.getItem(SETTINGS_KEY);
     if (stored) {
         try {
-            return { ...DEFAULT_SETTINGS, ...JSON.parse(stored) };
+            const parsed = JSON.parse(stored);
+            // Ensure we always have the embedded Gemini key if none is set
+            if (!parsed.gemini_api_key) {
+                parsed.gemini_api_key = EMBEDDED_GEMINI_KEY;
+            }
+            return { ...DEFAULT_SETTINGS, ...parsed };
         } catch (error) {
             console.error('Error parsing settings:', error);
             return DEFAULT_SETTINGS;
@@ -57,15 +68,15 @@ export const getSetting = (key) => {
 };
 
 /**
- * Reset to defaults
+ * Reset to defaults (clears localStorage)
  */
 export const resetSettings = () => {
-    localStorage.removeItem(SETTINGS_KEY); // Clear stored settings
+    localStorage.removeItem(SETTINGS_KEY);
     return DEFAULT_SETTINGS;
 };
 
 /**
- * Check if API key is configured
+ * Check if Gemini key is configured
  */
 export const hasGeminiKey = () => {
     const key = getSetting('gemini_api_key');
