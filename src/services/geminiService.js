@@ -1,30 +1,25 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+/**
+ * Gemini Service - Direct REST API implementation
+ * Supports user-provided API keys from Google AI Studio
+ * 
+ * Models tried in order: gemini-2.0-flash-exp → gemini-1.5-flash → gemini-pro
+ */
 
 export const MASTER_PROMPT = `
 You are Study Craft AI, an educational content generator designed for students.
 
 Your goal:
-- Convert a given topic OR content from a link into clear, structured, student-friendly learning materials.
+- Convert a given topic into clear, structured, student-friendly learning materials.
 - Focus on clarity, accuracy, and exam usefulness.
-- Avoid unnecessary verbosity.
 - Use simple language, but do not oversimplify concepts.
 
-Rules:
-- Output MUST follow the exact JSON structure provided.
-- Notes must be concise and study-ready.
-- Quiz questions must test understanding, not memorization.
-- Each quiz answer must include a short educational explanation.
-- Slides must be minimal: title + bullet points only.
-- Include 2-3 image keywords that would help students visualize the concept.
-- If the input is a URL, do your best to summarize the likely content of that page based on your training data.
-
-Topic/Link: {USER_INPUT}
+Topic: {USER_INPUT}
 
 Generate educational content suitable for a student.
 
 Return:
 1. Notes – clear bullet points or short paragraphs.
-2. ImageKeywords – 2-3 specific search terms for educational images (e.g., "photosynthesis diagram", "cell structure labeled").
+2. ImageKeywords – 2-3 specific search terms for educational images.
 3. Slides – presentation-style breakdown (title + bullet points).
 4. Quiz – multiple-choice questions with explanations.
 
@@ -115,32 +110,117 @@ const MOCK_DATA = {
   ]
 };
 
-export const generateContent = async (topic, apiKey = null) => {
-  console.log("Generating content for:", topic, "Has Key:", !!apiKey);
+// Models to try in order of preference
+const GEMINI_MODELS = [
+  'gemini-2.0-flash-exp',
+  'gemini-1.5-flash',
+  'gemini-pro'
+];
 
-  if (!apiKey) {
-    // Simulate network delay for realistic "Crafting..." state
-    await new Promise(resolve => setTimeout(resolve, 2000));
+/**
+ * Call Gemini API directly via REST
+ */
+async function callGeminiAPI(apiKey, model, prompt) {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: {
+        temperature: 0.7,
+        maxOutputTokens: 4096
+      }
+    })
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    const errorMsg = data.error?.message || `HTTP ${response.status}`;
+    throw new Error(`${model}: ${errorMsg}`);
+  }
+
+  if (!data.candidates?.[0]?.content?.parts?.[0]?.text) {
+    throw new Error(`${model}: No content in response`);
+  }
+
+  return data.candidates[0].content.parts[0].text;
+}
+
+/**
+ * Generate content using Gemini API
+ * Tries multiple models in sequence until one works
+ */
+export const generateContent = async (topic, apiKey = null) => {
+  console.log("🌟 Gemini: Generating content for:", topic, "Has Key:", !!apiKey);
+
+  if (!apiKey || apiKey.trim() === '') {
+    console.log("📚 No Gemini key, returning mock data");
+    await new Promise(resolve => setTimeout(resolve, 1500));
     return MOCK_DATA;
   }
 
-  try {
-    const genAI = new GoogleGenerativeAI(apiKey);
-    // Use gemini-2.0-flash - the new default as of January 2025
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+  const prompt = MASTER_PROMPT.replace('{USER_INPUT}', topic);
+  let lastError = null;
 
-    const prompt = MASTER_PROMPT.replace('{USER_INPUT}', topic);
+  // Try each model in sequence
+  for (const model of GEMINI_MODELS) {
+    try {
+      console.log(`🌟 Trying Gemini model: ${model}...`);
+      const text = await callGeminiAPI(apiKey.trim(), model, prompt);
 
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const text = response.text();
+      // Clean up markdown code blocks if present
+      const jsonString = text.replace(/```json/gi, '').replace(/```/g, '').trim();
 
-    // Clean up potential markdown code blocks if the model includes them
-    const jsonString = text.replace(/```json/g, '').replace(/```/g, '').trim();
+      const result = JSON.parse(jsonString);
+      console.log(`✅ Gemini ${model}: SUCCESS`);
+      return result;
+    } catch (error) {
+      console.warn(`⚠️ Gemini ${model} failed:`, error.message);
+      lastError = error;
 
-    return JSON.parse(jsonString);
-  } catch (error) {
-    console.error("Gemini Generation Error:", error);
-    throw new Error("Failed to generate content.");
+      // If quota exceeded, don't try other models (same key will fail)
+      if (error.message.includes('quota') || error.message.includes('429')) {
+        break;
+      }
+    }
   }
+
+  // All models failed
+  throw new Error(`Gemini API failed: ${lastError?.message || 'Unknown error'}`);
+};
+
+/**
+ * Validate a Gemini API key
+ * Returns { valid: boolean, model?: string, error?: string }
+ */
+export const validateGeminiKey = async (apiKey) => {
+  if (!apiKey || apiKey.trim() === '') {
+    return { valid: false, error: 'No API key provided' };
+  }
+
+  for (const model of GEMINI_MODELS) {
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey.trim()}`;
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: 'Say "OK" if working' }] }]
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.candidates?.[0]?.content?.parts?.[0]?.text) {
+        return { valid: true, model };
+      }
+    } catch (error) {
+      // Continue to next model
+    }
+  }
+
+  return { valid: false, error: 'Key invalid or quota exceeded' };
 };

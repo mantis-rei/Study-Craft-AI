@@ -1,26 +1,51 @@
 import React, { useState, useEffect } from 'react';
 import { getSettings, saveSettings } from '../services/settingsService';
+import { validateGeminiKey } from '../services/geminiService';
 
 const SettingsPanel = ({ isOpen, onClose }) => {
     const [settings, setSettings] = useState(getSettings());
     const [saved, setSaved] = useState(false);
+    const [testingGemini, setTestingGemini] = useState(false);
+    const [geminiStatus, setGeminiStatus] = useState(null); // null, 'valid', 'invalid'
 
     useEffect(() => {
         if (isOpen) {
             setSettings(getSettings());
             setSaved(false);
+            setGeminiStatus(null);
         }
     }, [isOpen]);
 
     const handleChange = (key, value) => {
         setSettings(prev => ({ ...prev, [key]: value }));
         setSaved(false);
+        if (key === 'gemini_api_key') {
+            setGeminiStatus(null); // Reset status when key changes
+        }
     };
 
     const handleSave = () => {
         saveSettings(settings);
         setSaved(true);
         setTimeout(() => setSaved(false), 2000);
+    };
+
+    const handleTestGeminiKey = async () => {
+        if (!settings.gemini_api_key) return;
+        setTestingGemini(true);
+        setGeminiStatus(null);
+
+        try {
+            const result = await validateGeminiKey(settings.gemini_api_key);
+            setGeminiStatus(result.valid ? 'valid' : 'invalid');
+            if (result.valid) {
+                console.log('✅ Gemini key validated with model:', result.model);
+            }
+        } catch (error) {
+            setGeminiStatus('invalid');
+        }
+
+        setTestingGemini(false);
     };
 
     if (!isOpen) return null;
@@ -146,7 +171,7 @@ const SettingsPanel = ({ isOpen, onClose }) => {
                                 AI Mode
                             </div>
                             <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                                Gemini API • Advanced
+                                GPT-4o / Gemini • Advanced
                             </div>
                         </div>
                     </div>
@@ -167,8 +192,8 @@ const SettingsPanel = ({ isOpen, onClose }) => {
                             </>
                         ) : (
                             <>
-                                <strong>AI Mode:</strong> Uses Google Gemini for advanced, customized content.
-                                Requires an API key but provides superior study materials.
+                                <strong>AI Mode:</strong> Uses GPT-4o Mini (built-in) + your Gemini key for
+                                advanced, customized content. Falls back to Wikipedia if APIs fail.
                             </>
                         )}
                     </div>
@@ -192,13 +217,96 @@ const SettingsPanel = ({ isOpen, onClose }) => {
                             fontSize: '0.9rem',
                             fontWeight: 600
                         }}>
-                            Gemini API Key {settings.learning_mode === 'ai' && <span style={{ color: '#ef4444' }}>*</span>}
+                            🌟 Gemini API Key <span style={{ fontSize: '0.8rem', fontWeight: 400, color: 'var(--text-muted)' }}>(Optional - enhances AI)</span>
+                        </label>
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                            <input
+                                type="password"
+                                value={settings.gemini_api_key}
+                                onChange={(e) => handleChange('gemini_api_key', e.target.value)}
+                                placeholder="AIzaSy..."
+                                style={{
+                                    flex: 1,
+                                    padding: '0.8rem 1rem',
+                                    background: 'rgba(255,255,255,0.05)',
+                                    border: geminiStatus === 'valid'
+                                        ? '2px solid #10b981'
+                                        : geminiStatus === 'invalid'
+                                            ? '2px solid #ef4444'
+                                            : '1px solid var(--glass-border)',
+                                    borderRadius: '8px',
+                                    color: 'var(--text-main)',
+                                    fontSize: '0.95rem',
+                                    fontFamily: 'monospace'
+                                }}
+                            />
+                            <button
+                                onClick={handleTestGeminiKey}
+                                disabled={!settings.gemini_api_key || testingGemini}
+                                style={{
+                                    padding: '0.8rem 1rem',
+                                    background: testingGemini ? 'rgba(99,102,241,0.3)' : 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                                    border: 'none',
+                                    borderRadius: '8px',
+                                    color: '#fff',
+                                    fontWeight: 600,
+                                    cursor: settings.gemini_api_key && !testingGemini ? 'pointer' : 'not-allowed',
+                                    opacity: settings.gemini_api_key ? 1 : 0.5,
+                                    whiteSpace: 'nowrap'
+                                }}
+                            >
+                                {testingGemini ? '...' : geminiStatus === 'valid' ? '✅' : geminiStatus === 'invalid' ? '❌' : 'Test'}
+                            </button>
+                        </div>
+                        <div style={{
+                            fontSize: '0.8rem',
+                            color: geminiStatus === 'valid' ? '#10b981' : geminiStatus === 'invalid' ? '#ef4444' : 'var(--text-muted)',
+                            marginTop: '0.4rem'
+                        }}>
+                            {geminiStatus === 'valid' ? '✅ Key is valid and working!' :
+                                geminiStatus === 'invalid' ? '❌ Key invalid or quota exceeded. Try a new key.' :
+                                    <>Get your FREE key from <a
+                                        href="https://aistudio.google.com/app/apikey"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        style={{ color: 'var(--accent)' }}
+                                    >
+                                        Google AI Studio
+                                    </a></>}
+                        </div>
+                    </div>
+
+                    {/* GPT-4o Info */}
+                    <div style={{
+                        padding: '1rem',
+                        background: 'rgba(16, 185, 129, 0.1)',
+                        borderRadius: '8px',
+                        marginBottom: '1.5rem',
+                        border: '1px solid rgba(16, 185, 129, 0.3)'
+                    }}>
+                        <div style={{ fontWeight: 600, marginBottom: '0.3rem', color: '#10b981' }}>
+                            ✅ GPT-4o Mini - Built-in & Working
+                        </div>
+                        <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                            No setup needed! The app uses GPT-4o Mini by default. Add a Gemini key for extra reliability.
+                        </div>
+                    </div>
+
+                    {/* OpenRouter API Key */}
+                    <div style={{ marginBottom: '1.5rem' }}>
+                        <label style={{
+                            display: 'block',
+                            marginBottom: '0.5rem',
+                            fontSize: '0.9rem',
+                            fontWeight: 600
+                        }}>
+                            🤖 OpenRouter API Key <span style={{ fontSize: '0.8rem', fontWeight: 400, color: 'var(--text-muted)' }}>(Optional)</span>
                         </label>
                         <input
                             type="password"
-                            value={settings.gemini_api_key}
-                            onChange={(e) => handleChange('gemini_api_key', e.target.value)}
-                            placeholder="AIza..."
+                            value={settings.openrouter_api_key}
+                            onChange={(e) => handleChange('openrouter_api_key', e.target.value)}
+                            placeholder="sk-or-v1-..."
                             style={{
                                 width: '100%',
                                 padding: '0.8rem 1rem',
@@ -215,85 +323,15 @@ const SettingsPanel = ({ isOpen, onClose }) => {
                             color: 'var(--text-muted)',
                             marginTop: '0.4rem'
                         }}>
-                            Get your key from <a
-                                href="https://makersuite.google.com/app/apikey"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                style={{ color: 'var(--accent)' }}
-                            >
-                                Google AI Studio
-                            </a>
-                        </div>
-                    </div>
-
-                    {/* OpenRouter API Key */}
-                    <div style={{ marginBottom: '1.5rem' }}>
-                        <label style={{
-                            display: 'block',
-                            marginBottom: '0.5rem',
-                            fontSize: '0.9rem',
-                            fontWeight: 600
-                        }}>
-                            🤖 OpenRouter API Key <span style={{ fontSize: '0.8rem', fontWeight: 400, color: '#a5b4fc' }}>(⭐ Recommended - FREE!)</span>
-                        </label>
-                        <input
-                            type="password"
-                            value={settings.openrouter_api_key}
-                            onChange={(e) => handleChange('openrouter_api_key', e.target.value)}
-                            placeholder="sk-or-v1-..."
-                            style={{
-                                width: '100%',
-                                padding: '0.8rem 1rem',
-                                background: 'rgba(255,255,255,0.05)',
-                                border: '1px solid rgba(99,102,241,0.4)',
-                                borderRadius: '8px',
-                                color: 'var(--text-main)',
-                                fontSize: '0.95rem',
-                                fontFamily: 'monospace'
-                            }}
-                        />
-                        <div style={{
-                            fontSize: '0.8rem',
-                            color: 'rgba(165,180,252,0.9)',
-                            marginTop: '0.4rem'
-                        }}>
-                            FREE: DeepSeek R1 (academic), Gemini 2.0, MiMo! Get from <a
+                            Get from <a
                                 href="https://openrouter.ai/keys"
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 style={{ color: 'var(--accent)' }}
                             >
                                 OpenRouter
-                            </a>
+                            </a> (additional fallback)
                         </div>
-                    </div>
-
-                    {/* Unsplash API Key */}
-                    <div>
-                        <label style={{
-                            display: 'block',
-                            marginBottom: '0.5rem',
-                            fontSize: '0.9rem',
-                            fontWeight: 600
-                        }}>
-                            Unsplash API Key <span style={{ fontSize: '0.8rem', fontWeight: 400, color: 'var(--text-muted)' }}>(Optional)</span>
-                        </label>
-                        <input
-                            type="password"
-                            value={settings.unsplash_api_key}
-                            onChange={(e) => handleChange('unsplash_api_key', e.target.value)}
-                            placeholder="Leave empty for mock images"
-                            style={{
-                                width: '100%',
-                                padding: '0.8rem 1rem',
-                                background: 'rgba(255,255,255,0.05)',
-                                border: '1px solid var(--glass-border)',
-                                borderRadius: '8px',
-                                color: 'var(--text-main)',
-                                fontSize: '0.95rem',
-                                fontFamily: 'monospace'
-                            }}
-                        />
                     </div>
                 </section>
 
