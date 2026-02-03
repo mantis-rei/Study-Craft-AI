@@ -1,18 +1,18 @@
 /**
  * Settings Service
- * API Priority: GPT-4o → Gemini → Wikipedia
+ * API Priority: GPT-4o → Wikipedia
+ * NOTE: Gemini key was invalid, removed. GPT-4o Mini via RapidAPI works!
  */
 
 const SETTINGS_KEY = 'studycraft_settings';
 
-// Embedded API keys for demo
-const EMBEDDED_GEMINI_KEY = 'AIzaSyDEZCCk7U6e8S1jR0l2FEybXuq7kqjKVHw';
+// Embedded RapidAPI key for GPT-4o Mini - VERIFIED WORKING
 const EMBEDDED_RAPIDAPI_KEY = '628a008275msh65a3ab23b2318d4p1f4a2cjsn481bddb5b5ae';
 
 const DEFAULT_SETTINGS = {
-    gemini_api_key: EMBEDDED_GEMINI_KEY,
-    openrouter_api_key: '',
-    rapidapi_key: EMBEDDED_RAPIDAPI_KEY, // GPT-4o Mini
+    gemini_api_key: '', // User can add their own
+    openrouter_api_key: '', // User can add their own
+    rapidapi_key: EMBEDDED_RAPIDAPI_KEY, // GPT-4o Mini - WORKING!
     pexels_api_key: 'EIdFnChjLG764EvXH3aTHNvDyGEd8xJ1dkk3ZOaxxzrifQESxhCCXraq',
     learning_mode: 'ai',
     auto_fetch_images: true,
@@ -24,8 +24,7 @@ export const getSettings = () => {
     if (stored) {
         try {
             const parsed = JSON.parse(stored);
-            // Ensure embedded keys
-            if (!parsed.gemini_api_key) parsed.gemini_api_key = EMBEDDED_GEMINI_KEY;
+            // Ensure embedded RapidAPI key
             if (!parsed.rapidapi_key) parsed.rapidapi_key = EMBEDDED_RAPIDAPI_KEY;
             return { ...DEFAULT_SETTINGS, ...parsed };
         } catch (error) {
