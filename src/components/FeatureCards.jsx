@@ -42,8 +42,8 @@ const FeatureCards = ({ onSelectFeature, currentTopic }) => {
             setSelectedProject(null);
             setProjectTutorial(null);
             try {
-                const settings = getSettings();
-                const results = await generateProjectIdeas(topic, settings.gemini_api_key);
+                // Service handles API keys internally now
+                const results = await generateProjectIdeas(topic);
                 setProjectResults(results);
             } catch (error) {
                 console.error('Project ideas error:', error);

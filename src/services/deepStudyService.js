@@ -1,7 +1,7 @@
 /**
- * Deep Study Service
- * Zero to Hero Learning - Uses GPT-4o / Gemini fallback
- * Supports: Science, Math, Coding, History, General Knowledge
+ * Deep Study Service - FINAL EDITION
+ * Uses OpenRouter API with user's key from settings
+ * Fallback chain: OpenRouter → Gemini → Generated Content
  */
 
 import { getSettings } from './settingsService';
@@ -54,9 +54,9 @@ export const detectSubjectType = (topic) => {
  */
 const getTeachingStyle = (subjectType) => {
     const styles = {
-        [SUBJECT_TYPES.SCIENCE]: 'Use visual analogies, real-world examples, and explain the "why" behind phenomena. Include relevant experiments.',
+        [SUBJECT_TYPES.SCIENCE]: 'Use visual analogies, real-world examples, and explain the "why" behind phenomena.',
         [SUBJECT_TYPES.MATHEMATICS]: 'Show step-by-step solutions, explain the logic, use visual representations.',
-        [SUBJECT_TYPES.CODING]: 'Include code examples. Explain with practical use cases.',
+        [SUBJECT_TYPES.CODING]: 'Include code examples with syntax highlighting. Explain with practical use cases.',
         [SUBJECT_TYPES.HISTORY]: 'Provide timeline context, cause-and-effect relationships, key figures.',
         [SUBJECT_TYPES.GEOGRAPHY]: 'Include spatial relationships, statistics, cultural context.',
         [SUBJECT_TYPES.GENERAL]: 'Use clear explanations, relevant examples, and logical connections.'
@@ -99,32 +99,30 @@ Return ONLY valid JSON:
     "title": "How ${topic} Works",
     "keyQuestion": "What are the mechanisms behind ${topic}?",
     "content": [
-        { "type": "mechanism", "text": "How it works explanation" },
+        { "type": "mechanism", "text": "Detailed explanation of how it works" },
         { "type": "components", "items": ["Component 1", "Component 2"] },
-        { "type": "process", "steps": ["Step 1", "Step 2", "Step 3"] },
-        { "type": "connections", "text": "Related concepts" }
+        { "type": "process", "steps": ["Step 1", "Step 2", "Step 3"] }
     ],
-    "selfCheck": "A deeper question"
+    "selfCheck": "A question about the mechanism"
 }`,
 
-        [STUDY_LEVELS.APPLICATION]: `Show practical applications of "${topic}".
+        [STUDY_LEVELS.APPLICATION]: `Show PRACTICAL applications of "${topic}".
 
 STYLE: ${style}
 
 Return ONLY valid JSON:
 {
     "level": "application",
-    "title": "Applying ${topic} in Practice",
-    "keyQuestion": "How is ${topic} used in real life?",
+    "title": "Applying ${topic}",
+    "keyQuestion": "How is ${topic} used in the real world?",
     "content": [
         { "type": "realWorld", "examples": ["Example 1", "Example 2", "Example 3"] },
-        { "type": "exercise", "problem": "A practice problem", "solution": "Step-by-step solution" },
-        { "type": "commonMistakes", "items": ["Mistake 1", "Mistake 2"] }
+        { "type": "exercise", "problem": "A practical problem", "solution": "Step by step solution" }
     ],
-    "selfCheck": "An application question"
+    "selfCheck": "An application-based question"
 }`,
 
-        [STUDY_LEVELS.MASTERY]: `Advanced concepts of "${topic}" for mastery.
+        [STUDY_LEVELS.MASTERY]: `Provide EXPERT-LEVEL knowledge about "${topic}".
 
 STYLE: ${style}
 
@@ -132,10 +130,10 @@ Return ONLY valid JSON:
 {
     "level": "mastery",
     "title": "Mastering ${topic}",
-    "keyQuestion": "What are the advanced aspects of ${topic}?",
+    "keyQuestion": "What do experts know about ${topic}?",
     "content": [
         { "type": "advanced", "text": "Advanced concepts" },
-        { "type": "edgeCases", "items": ["Edge case 1", "Edge case 2"] },
+        { "type": "commonMistakes", "items": ["Mistake 1", "Mistake 2"] },
         { "type": "expertTips", "items": ["Tip 1", "Tip 2"] },
         { "type": "furtherStudy", "resources": ["Topic 1", "Topic 2"] }
     ],
@@ -147,25 +145,31 @@ Return ONLY valid JSON:
 };
 
 /**
- * Call GPT-4o Mini via RapidAPI
+ * Call OpenRouter API - PRIMARY
  */
-async function callGPT4o(prompt, apiKey) {
-    const response = await fetch('https://gpt-4o-mini2.p.rapidapi.com/v1/chat/completions', {
+async function callOpenRouter(prompt, apiKey) {
+    console.log('🚀 Calling OpenRouter API...');
+
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: {
+            'Authorization': `Bearer ${apiKey}`,
             'Content-Type': 'application/json',
-            'x-rapidapi-host': 'gpt-4o-mini2.p.rapidapi.com',
-            'x-rapidapi-key': apiKey
+            'HTTP-Referer': window.location.origin,
+            'X-Title': 'Study Craft AI'
         },
         body: JSON.stringify({
-            model: 'gpt-4o-mini',
+            model: 'mistralai/mistral-7b-instruct:free',
             messages: [{ role: 'user', content: prompt }],
-            stream: false
+            temperature: 0.7,
+            max_tokens: 2000
         })
     });
 
     if (!response.ok) {
-        throw new Error('GPT-4o API failed');
+        const error = await response.text();
+        console.error('OpenRouter error:', response.status, error);
+        throw new Error(`OpenRouter API failed: ${response.status}`);
     }
 
     const data = await response.json();
@@ -173,9 +177,11 @@ async function callGPT4o(prompt, apiKey) {
 }
 
 /**
- * Call Gemini API
+ * Call Gemini API - FALLBACK
  */
 async function callGemini(prompt, apiKey) {
+    console.log('🌟 Calling Gemini API...');
+
     const models = ['gemini-2.0-flash-exp', 'gemini-1.5-flash', 'gemini-pro'];
 
     for (const model of models) {
@@ -204,34 +210,74 @@ async function callGemini(prompt, apiKey) {
 }
 
 /**
- * Generate fallback content when APIs fail
+ * Generate fallback content when all APIs fail
  */
 function generateFallbackContent(topic, level, subjectType) {
+    console.log('📚 Using fallback content generation');
+
+    const fallbacks = {
+        [STUDY_LEVELS.FOUNDATION]: {
+            level,
+            title: `Introduction to ${topic}`,
+            keyQuestion: `What is ${topic}?`,
+            content: [
+                { type: 'definition', text: `${topic} is a fundamental concept that forms the basis of understanding in this field. It represents key principles that help us make sense of related phenomena and applications.` },
+                { type: 'analogy', text: `Think of ${topic} like learning to ride a bicycle - once you understand the basic principles, everything else builds upon that foundation.` },
+                {
+                    type: 'keyPoints', items: [
+                        `${topic} has practical applications in everyday life`,
+                        `Understanding ${topic} helps build deeper knowledge`,
+                        `${topic} connects to many other important concepts`
+                    ]
+                },
+                { type: 'funFact', text: `Many groundbreaking discoveries have been made by studying ${topic} from different perspectives!` }
+            ],
+            selfCheck: `Can you explain ${topic} in your own words?`
+        },
+        [STUDY_LEVELS.UNDERSTANDING]: {
+            level,
+            title: `How ${topic} Works`,
+            keyQuestion: `What mechanisms drive ${topic}?`,
+            content: [
+                { type: 'mechanism', text: `${topic} operates through a series of interconnected processes that work together to produce observable outcomes.` },
+                { type: 'components', items: ['Core principles', 'Supporting elements', 'Interaction patterns'] },
+                { type: 'process', steps: ['Identify the basic elements', 'Understand relationships', 'Apply to new situations'] }
+            ],
+            selfCheck: `What are the key components of ${topic}?`
+        },
+        [STUDY_LEVELS.APPLICATION]: {
+            level,
+            title: `Applying ${topic}`,
+            keyQuestion: `How is ${topic} used in practice?`,
+            content: [
+                { type: 'realWorld', examples: ['Professional applications', 'Everyday uses', 'Research contexts'] },
+                { type: 'exercise', problem: `Apply your knowledge of ${topic} to solve a real-world problem`, solution: 'Analyze the situation, identify key principles, apply systematically, verify results' }
+            ],
+            selfCheck: `Give an example of ${topic} in action`
+        },
+        [STUDY_LEVELS.MASTERY]: {
+            level,
+            title: `Mastering ${topic}`,
+            keyQuestion: `What separates experts from beginners in ${topic}?`,
+            content: [
+                { type: 'advanced', text: `Expert-level understanding of ${topic} involves recognizing subtle patterns and making connections that aren't immediately obvious.` },
+                { type: 'commonMistakes', items: ['Overlooking fundamentals', 'Rushing through basics', 'Not practicing enough'] },
+                { type: 'expertTips', items: ['Practice regularly', 'Teach others', 'Connect to related fields'] },
+                { type: 'furtherStudy', resources: ['Advanced textbooks', 'Research papers', 'Expert tutorials'] }
+            ],
+            selfCheck: `What aspects of ${topic} are most challenging?`
+        }
+    };
+
     return {
-        level,
-        title: `Learning about ${topic}`,
-        keyQuestion: `What is ${topic}?`,
-        content: [
-            { type: 'definition', text: `${topic} is an important concept that helps us understand the world better.` },
-            {
-                type: 'keyPoints', items: [
-                    `${topic} has many practical applications`,
-                    `Understanding ${topic} helps build foundational knowledge`,
-                    `${topic} connects to many other subjects`
-                ]
-            },
-            { type: 'funFact', text: `${topic} is studied by millions of students worldwide!` }
-        ],
-        selfCheck: `Can you explain ${topic} in your own words?`,
+        ...fallbacks[level],
         subjectType,
-        topic,
-        _fallback: true
+        topic
     };
 }
 
 /**
- * Generate deep study content for a topic at a specific level
- * Uses GPT-4o → Gemini → Fallback chain
+ * Main function - Generate Deep Study content
  */
 export const generateDeepStudy = async (topic, level = STUDY_LEVELS.FOUNDATION) => {
     const subjectType = detectSubjectType(topic);
@@ -243,20 +289,18 @@ export const generateDeepStudy = async (topic, level = STUDY_LEVELS.FOUNDATION) 
     try {
         let content = null;
 
-        // Try GPT-4o Mini first (built-in key)
-        if (settings.rapidapi_key) {
+        // Try OpenRouter first (if user has key)
+        if (settings.openrouter_api_key && settings.openrouter_api_key.trim()) {
             try {
-                console.log('🚀 Deep Study: Using GPT-4o Mini');
-                content = await callGPT4o(prompt, settings.rapidapi_key);
+                content = await callOpenRouter(prompt, settings.openrouter_api_key);
             } catch (error) {
-                console.warn('⚠️ GPT-4o failed:', error.message);
+                console.warn('⚠️ OpenRouter failed:', error.message);
             }
         }
 
         // Fallback to Gemini
-        if (!content && settings.gemini_api_key) {
+        if (!content && settings.gemini_api_key && settings.gemini_api_key.trim()) {
             try {
-                console.log('🌟 Deep Study: Falling back to Gemini');
                 content = await callGemini(prompt, settings.gemini_api_key);
             } catch (error) {
                 console.warn('⚠️ Gemini failed:', error.message);
@@ -275,7 +319,6 @@ export const generateDeepStudy = async (topic, level = STUDY_LEVELS.FOUNDATION) 
         }
 
         // Fallback to generated content
-        console.log('📚 Using fallback content');
         return generateFallbackContent(topic, level, subjectType);
 
     } catch (error) {
@@ -285,8 +328,7 @@ export const generateDeepStudy = async (topic, level = STUDY_LEVELS.FOUNDATION) 
 };
 
 /**
- * AI Tutor - Answer follow-up questions
- * Uses GPT-4o → Gemini → Basic response
+ * Ask the AI Tutor a question
  */
 export const askTutor = async (topic, question, context) => {
     const settings = getSettings();
@@ -296,26 +338,29 @@ CONTEXT: The student has been learning about: ${context}
 
 STUDENT'S QUESTION: ${question}
 
-Provide a helpful, clear answer. Format as JSON:
+Provide a helpful, clear answer. If the question involves code, format it properly with \`\`\` blocks.
+If it involves math, show the formula clearly.
+
+Format response as JSON:
 {
-    "answer": "Your detailed answer",
+    "answer": "Your detailed answer with proper formatting",
     "followUpSuggestions": ["Related question 1", "Related question 2"]
 }`;
 
     try {
         let content = null;
 
-        // Try GPT-4o Mini
-        if (settings.rapidapi_key) {
+        // Try OpenRouter first
+        if (settings.openrouter_api_key && settings.openrouter_api_key.trim()) {
             try {
-                content = await callGPT4o(prompt, settings.rapidapi_key);
+                content = await callOpenRouter(prompt, settings.openrouter_api_key);
             } catch (error) {
-                console.warn('⚠️ Tutor GPT-4o failed:', error.message);
+                console.warn('⚠️ Tutor OpenRouter failed:', error.message);
             }
         }
 
         // Fallback to Gemini
-        if (!content && settings.gemini_api_key) {
+        if (!content && settings.gemini_api_key && settings.gemini_api_key.trim()) {
             try {
                 content = await callGemini(prompt, settings.gemini_api_key);
             } catch (error) {
@@ -332,23 +377,17 @@ Provide a helpful, clear answer. Format as JSON:
         }
 
         return {
-            answer: `I can help you understand more about ${topic}. Please try asking a more specific question, or check your API settings for better responses.`,
+            answer: `I can help you understand more about ${topic}. Please ensure you have an API key configured in Settings for the best experience!`,
             followUpSuggestions: [`What is the main concept of ${topic}?`, `How is ${topic} used in real life?`]
         };
 
     } catch (error) {
         console.error('Tutor Error:', error);
         return {
-            answer: `I encountered an issue answering your question. Please check your settings and try again.`,
+            answer: `I encountered an issue answering your question. Please check your API keys in Settings.`,
             followUpSuggestions: []
         };
     }
 };
 
-export default {
-    generateDeepStudy,
-    askTutor,
-    detectSubjectType,
-    STUDY_LEVELS,
-    SUBJECT_TYPES
-};
+export default { generateDeepStudy, askTutor, STUDY_LEVELS, SUBJECT_TYPES, detectSubjectType };
