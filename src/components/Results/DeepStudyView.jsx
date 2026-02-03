@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { generateDeepStudy, askTutor, STUDY_LEVELS, detectSubjectType } from '../../services/deepStudyService';
-import { getSettings } from '../../services/settingsService';
 
 /**
  * Deep Study View
@@ -35,8 +34,8 @@ const DeepStudyView = ({ topic, onBack }) => {
 
         setLoading(true);
         try {
-            const settings = getSettings();
-            const result = await generateDeepStudy(topic, level, settings.openrouter_api_key);
+            // Service handles API keys internally now
+            const result = await generateDeepStudy(topic, level);
             setContent(prev => ({ ...prev, [level]: result }));
             setCurrentLevel(level);
         } catch (error) {
@@ -53,8 +52,8 @@ const DeepStudyView = ({ topic, onBack }) => {
         const context = currentContent?.title || topic;
 
         try {
-            const settings = getSettings();
-            const response = await askTutor(topic, question, context, settings.openrouter_api_key);
+            // Service handles API keys internally now
+            const response = await askTutor(topic, question, context);
             setChatHistory(prev => [...prev,
             { type: 'user', text: question },
             { type: 'ai', text: response.answer, suggestions: response.followUpSuggestions }

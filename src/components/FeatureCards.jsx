@@ -5,7 +5,8 @@ import { generateProjectTutorial, generateFullNotes } from '../services/gpt4oSer
 import { getSettings } from '../services/settingsService';
 
 /**
- * Feature Cards - Enhanced with Go Deeper and PDF Notes
+ * Feature Cards - Fixed modals with proper close buttons
+ * All close buttons are fixed positioned and always accessible
  */
 const FeatureCards = ({ onSelectFeature, currentTopic }) => {
     const [youtubeResults, setYoutubeResults] = useState(null);
@@ -79,7 +80,6 @@ const FeatureCards = ({ onSelectFeature, currentTopic }) => {
 
     const downloadNotesAsPDF = () => {
         if (!fullNotes) return;
-        // Create text content for download
         let content = `# ${fullNotes.title}\n\n`;
         fullNotes.sections?.forEach(section => {
             content += `## ${section.heading}\n\n${section.content}\n\n`;
@@ -88,7 +88,6 @@ const FeatureCards = ({ onSelectFeature, currentTopic }) => {
         });
         if (fullNotes.summary?.length) content += `## Summary\n${fullNotes.summary.map(s => `• ${s}`).join('\n')}\n\n`;
 
-        // Download as text file (PDF would need jsPDF library)
         const blob = new Blob([content], { type: 'text/markdown' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -98,46 +97,124 @@ const FeatureCards = ({ onSelectFeature, currentTopic }) => {
         URL.revokeObjectURL(url);
     };
 
-    const renderProjectCard = (project, i, level) => (
-        <div key={i} style={{
-            background: 'rgba(255,255,255,0.03)',
-            border: '1px solid var(--glass-border)',
+    // Fixed Close Button Component - Always visible and clickable
+    const CloseButton = ({ onClick, style = {} }) => (
+        <button
+            onClick={onClick}
+            style={{
+                position: 'absolute',
+                top: '1rem',
+                right: '1rem',
+                width: '44px',
+                height: '44px',
+                minWidth: '44px',
+                minHeight: '44px',
+                borderRadius: '50%',
+                background: 'rgba(239, 68, 68, 0.9)',
+                border: '2px solid rgba(255,255,255,0.3)',
+                color: '#fff',
+                fontSize: '1.5rem',
+                fontWeight: 'bold',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 9999,
+                boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
+                transition: 'all 0.2s',
+                ...style
+            }}
+            onMouseOver={(e) => e.target.style.background = 'rgba(239, 68, 68, 1)'}
+            onMouseOut={(e) => e.target.style.background = 'rgba(239, 68, 68, 0.9)'}
+        >
+            ✕
+        </button>
+    );
+
+    // Modal Overlay Component
+    const ModalOverlay = ({ children, onClose }) => (
+        <div
+            onClick={onClose}
+            style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                background: 'rgba(0,0,0,0.9)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 2000,
+                padding: '1rem',
+                overflowY: 'auto'
+            }}
+        >
+            {children}
+        </div>
+    );
+
+    // Modal Content Component
+    const ModalContent = ({ children, onClose, maxWidth = '600px' }) => (
+        <div
+            onClick={(e) => e.stopPropagation()}
+            className="glass-card animate-slide-up"
+            style={{
+                position: 'relative',
+                maxWidth: maxWidth,
+                width: '100%',
+                padding: '2rem',
+                paddingTop: '3.5rem',
+                maxHeight: '90vh',
+                overflow: 'auto',
+                background: 'rgba(15,23,42,0.98)',
+                border: '1px solid rgba(6,182,212,0.3)',
+                borderRadius: '16px'
+            }}
+        >
+            <CloseButton onClick={onClose} />
+            {children}
+        </div>
+    );
+
+    const renderProjectCard = (project, index, difficulty) => (
+        <div key={index} style={{
+            padding: '1rem',
+            marginBottom: '0.75rem',
+            background: 'rgba(255,255,255,0.02)',
             borderRadius: '12px',
-            padding: '1.25rem',
-            marginBottom: '1rem'
+            border: '1px solid rgba(255,255,255,0.08)'
         }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
-                <h4 style={{ margin: 0, color: 'var(--text-main)', fontSize: '1rem' }}>{project.title}</h4>
-                <span style={{ fontSize: '0.7rem', padding: '0.25rem 0.5rem', background: 'rgba(99,102,241,0.3)', borderRadius: '4px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
+                <div style={{ flex: 1 }}>
+                    <h4 style={{ margin: 0, marginBottom: '0.5rem', fontSize: '1rem' }}>{project.title}</h4>
+                    <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>{project.description}</p>
+                </div>
+                <span style={{ fontSize: '0.75rem', padding: '0.25rem 0.75rem', background: 'rgba(6,182,212,0.2)', borderRadius: '20px', whiteSpace: 'nowrap', color: 'var(--accent)' }}>
                     ⏱️ {project.timeEstimate}
                 </span>
             </div>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '0.5rem 0', lineHeight: 1.5 }}>
-                {project.description}
-            </p>
-            <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
-                {project.skills?.slice(0, 3).map((skill, j) => (
-                    <span key={j} style={{ fontSize: '0.7rem', padding: '0.2rem 0.5rem', background: 'rgba(6,182,212,0.2)', borderRadius: '4px', color: 'var(--accent)' }}>
-                        {skill}
-                    </span>
-                ))}
-            </div>
+            {project.tags && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginTop: '0.75rem' }}>
+                    {project.tags.map((tag, i) => (
+                        <span key={i} style={{ fontSize: '0.7rem', padding: '0.2rem 0.5rem', background: 'rgba(99,102,241,0.15)', borderRadius: '4px', color: '#a5b4fc' }}>{tag}</span>
+                    ))}
+                </div>
+            )}
             <button
                 onClick={() => handleGoDeeper(project)}
                 style={{
                     width: '100%',
+                    marginTop: '1rem',
                     padding: '0.6rem',
-                    background: 'linear-gradient(135deg, var(--primary), var(--accent))',
+                    background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
                     border: 'none',
                     borderRadius: '8px',
                     color: '#fff',
                     fontWeight: 600,
-                    fontSize: '0.85rem',
                     cursor: 'pointer',
-                    transition: 'transform 0.2s'
+                    fontSize: '0.9rem'
                 }}
-                onMouseOver={e => e.target.style.transform = 'scale(1.02)'}
-                onMouseOut={e => e.target.style.transform = 'scale(1)'}
             >
                 🚀 Go Deeper - Start Tutorial
             </button>
@@ -145,27 +222,22 @@ const FeatureCards = ({ onSelectFeature, currentTopic }) => {
     );
 
     const renderTutorial = () => (
-        <div style={{ padding: '1rem 0' }}>
-            <button onClick={() => { setSelectedProject(null); setProjectTutorial(null); }} style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', marginBottom: '1rem' }}>
+        <div>
+            <button
+                onClick={() => { setSelectedProject(null); setProjectTutorial(null); }}
+                className="btn-text"
+                style={{ marginBottom: '1rem', padding: '0.5rem 1rem' }}
+            >
                 ← Back to Projects
             </button>
-            <h3 style={{ color: 'var(--accent)', marginBottom: '1rem' }}>{projectTutorial.title}</h3>
-
-            {projectTutorial.prerequisites?.length > 0 && (
-                <div style={{ marginBottom: '1.5rem' }}>
-                    <h4 style={{ fontSize: '0.9rem', marginBottom: '0.5rem' }}>📋 Prerequisites</h4>
-                    <ul style={{ paddingLeft: '1.2rem', margin: 0 }}>
-                        {projectTutorial.prerequisites.map((p, i) => <li key={i} style={{ marginBottom: '0.25rem', color: 'var(--text-muted)' }}>{p}</li>)}
-                    </ul>
-                </div>
-            )}
-
+            <h2 style={{ color: 'var(--accent)', marginBottom: '1rem' }}>{projectTutorial.project}</h2>
+            <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>{projectTutorial.overview}</p>
             {projectTutorial.steps?.map((step, i) => (
-                <div key={i} style={{ marginBottom: '1.5rem', padding: '1rem', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', borderLeft: '3px solid var(--accent)' }}>
-                    <div style={{ fontWeight: 600, marginBottom: '0.5rem' }}>Step {step.stepNumber}: {step.title}</div>
-                    <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>{step.explanation}</p>
+                <div key={i} style={{ marginBottom: '1.5rem', padding: '1rem', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', borderLeft: '3px solid var(--accent)' }}>
+                    <h4 style={{ margin: 0, marginBottom: '0.5rem' }}>Step {i + 1}: {step.title}</h4>
+                    <p style={{ margin: 0, marginBottom: '0.75rem', fontSize: '0.9rem', color: 'var(--text-muted)' }}>{step.description}</p>
                     {step.code && (
-                        <pre style={{ background: '#1a1a2e', padding: '1rem', borderRadius: '8px', overflow: 'auto', fontSize: '0.8rem', color: '#22d3ee' }}>
+                        <pre style={{ background: 'rgba(0,0,0,0.4)', padding: '1rem', borderRadius: '8px', overflow: 'auto', fontSize: '0.8rem' }}>
                             <code>{step.code}</code>
                         </pre>
                     )}
@@ -195,29 +267,50 @@ const FeatureCards = ({ onSelectFeature, currentTopic }) => {
                 </div>
             </div>
 
-            {/* YouTube Modal */}
+            {/* YouTube Modal - FIXED with proper close button */}
             {showYoutubeModal && youtubeResults && (
-                <div className="modal-overlay" onClick={() => setShowYoutubeModal(false)} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}>
-                    <div className="glass-card animate-slide-up" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px', width: '100%', padding: '2rem', maxHeight: '85vh', overflow: 'auto' }}>
-                        <h2 style={{ marginBottom: '1rem' }}>🎬 YouTube Tutorials</h2>
-                        <p style={{ color: 'var(--text-muted)', marginBottom: '1rem' }}>Topic: <strong style={{ color: 'var(--accent)' }}>{youtubeResults.topic}</strong></p>
-                        <button className="btn-primary" onClick={() => { openYouTubeSearch(currentTopic || 'study tips'); setShowYoutubeModal(false); }} style={{ width: '100%', marginBottom: '1rem', padding: '0.8rem' }}>🚀 Search YouTube</button>
+                <ModalOverlay onClose={() => setShowYoutubeModal(false)}>
+                    <ModalContent onClose={() => setShowYoutubeModal(false)} maxWidth="500px">
+                        <h2 style={{ marginBottom: '1rem', textAlign: 'center' }}>🎬 YouTube Tutorials</h2>
+                        <p style={{ color: 'var(--text-muted)', marginBottom: '1rem', textAlign: 'center' }}>
+                            Topic: <strong style={{ color: 'var(--accent)' }}>{youtubeResults.topic}</strong>
+                        </p>
+                        <button
+                            className="btn-primary"
+                            onClick={() => { openYouTubeSearch(currentTopic || 'study tips'); setShowYoutubeModal(false); }}
+                            style={{ width: '100%', marginBottom: '1rem', padding: '0.8rem' }}
+                        >
+                            🚀 Search YouTube
+                        </button>
                         {youtubeResults.suggestions.map((s, i) => (
-                            <a key={i} href={s.searchUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'block', padding: '0.75rem', marginBottom: '0.5rem', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid var(--glass-border)', textDecoration: 'none', color: 'var(--text-main)' }}>
+                            <a
+                                key={i}
+                                href={s.searchUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{
+                                    display: 'block',
+                                    padding: '0.75rem',
+                                    marginBottom: '0.5rem',
+                                    background: 'rgba(255,255,255,0.03)',
+                                    borderRadius: '8px',
+                                    border: '1px solid var(--glass-border)',
+                                    textDecoration: 'none',
+                                    color: 'var(--text-main)'
+                                }}
+                            >
                                 <div style={{ fontWeight: 600 }}>{s.title}</div>
                                 <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{s.description}</div>
                             </a>
                         ))}
-                        <button className="btn-text" onClick={() => setShowYoutubeModal(false)} style={{ width: '100%', marginTop: '1rem' }}>Close</button>
-                    </div>
-                </div>
+                    </ModalContent>
+                </ModalOverlay>
             )}
 
-            {/* Project Ideas Modal - IMPROVED LAYOUT */}
+            {/* Project Ideas Modal - FIXED with proper close button */}
             {showProjectModal && (
-                <div className="modal-overlay" onClick={() => setShowProjectModal(false)} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.9)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}>
-                    <div className="glass-card animate-slide-up" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '700px', width: '100%', padding: '1.5rem', maxHeight: '90vh', overflow: 'auto', background: 'rgba(15,23,42,0.98)', border: '1px solid rgba(6,182,212,0.3)' }}>
-
+                <ModalOverlay onClose={() => setShowProjectModal(false)}>
+                    <ModalContent onClose={() => setShowProjectModal(false)} maxWidth="700px">
                         {loadingProjects ? (
                             <div style={{ textAlign: 'center', padding: '4rem 2rem' }}>
                                 <div className="loading-spinner" style={{ margin: '0 auto 1rem' }}></div>
@@ -234,7 +327,9 @@ const FeatureCards = ({ onSelectFeature, currentTopic }) => {
                             <>
                                 <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
                                     <h2 style={{ margin: 0, marginBottom: '0.5rem' }}>💡 Project Ideas</h2>
-                                    <p style={{ color: 'var(--text-muted)', margin: 0 }}>Projects for: <strong style={{ color: 'var(--accent)' }}>{projectResults.topic}</strong></p>
+                                    <p style={{ color: 'var(--text-muted)', margin: 0 }}>
+                                        Projects for: <strong style={{ color: 'var(--accent)' }}>{projectResults.topic}</strong>
+                                    </p>
                                 </div>
 
                                 <div style={{ display: 'grid', gap: '1.5rem' }}>
@@ -267,62 +362,71 @@ const FeatureCards = ({ onSelectFeature, currentTopic }) => {
                                 </div>
                             </>
                         ) : null}
-
-                        <button className="btn-text" onClick={() => setShowProjectModal(false)} style={{ width: '100%', marginTop: '1.5rem', padding: '0.75rem' }}>Close</button>
-                    </div>
-                </div>
+                    </ModalContent>
+                </ModalOverlay>
             )}
 
-            {/* Full Notes Modal */}
+            {/* Full Notes Modal - FIXED with proper close button */}
             {showNotesModal && (
-                <div className="modal-overlay" onClick={() => setShowNotesModal(false)} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.9)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}>
-                    <div className="glass-card animate-slide-up" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '800px', width: '100%', padding: '2rem', maxHeight: '90vh', overflow: 'auto' }}>
+                <ModalOverlay onClose={() => setShowNotesModal(false)}>
+                    <ModalContent onClose={() => setShowNotesModal(false)} maxWidth="800px">
                         {loadingNotes ? (
-                            <div style={{ textAlign: 'center', padding: '4rem' }}>
+                            <div style={{ textAlign: 'center', padding: '4rem 2rem' }}>
                                 <div className="loading-spinner" style={{ margin: '0 auto 1rem' }}></div>
                                 <p style={{ color: 'var(--text-muted)' }}>Generating comprehensive notes...</p>
                             </div>
                         ) : fullNotes ? (
                             <>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                                    <h2 style={{ margin: 0 }}>📝 {fullNotes.title}</h2>
-                                    <button className="btn-primary" onClick={downloadNotesAsPDF} style={{ padding: '0.5rem 1rem' }}>📥 Download</button>
-                                </div>
+                                <h2 style={{ marginBottom: '1rem', textAlign: 'center' }}>📝 {fullNotes.title}</h2>
+
                                 {fullNotes.sections?.map((section, i) => (
-                                    <div key={i} style={{ marginBottom: '1.5rem' }}>
-                                        <h3 style={{ color: 'var(--accent)', marginBottom: '0.75rem', fontSize: '1.1rem' }}>{section.heading}</h3>
-                                        <p style={{ lineHeight: 1.7, color: 'var(--text-muted)' }}>{section.content}</p>
+                                    <div key={i} style={{ marginBottom: '1.5rem', padding: '1rem', background: 'rgba(255,255,255,0.02)', borderRadius: '12px' }}>
+                                        <h3 style={{ color: 'var(--accent)', marginBottom: '0.75rem' }}>{section.heading}</h3>
+                                        <p style={{ lineHeight: 1.7 }}>{section.content}</p>
                                         {section.codeExample && (
-                                            <pre style={{ background: '#1a1a2e', padding: '1rem', borderRadius: '8px', overflow: 'auto', margin: '1rem 0', fontSize: '0.85rem', color: '#22d3ee' }}>
+                                            <pre style={{ marginTop: '1rem', background: 'rgba(0,0,0,0.4)', padding: '1rem', borderRadius: '8px', overflow: 'auto' }}>
                                                 <code>{section.codeExample}</code>
                                             </pre>
                                         )}
                                         {section.mathSteps?.length > 0 && (
-                                            <div style={{ background: 'rgba(99,102,241,0.1)', padding: '1rem', borderRadius: '8px', marginTop: '0.5rem' }}>
-                                                <strong>Step-by-step:</strong>
-                                                <ol style={{ margin: '0.5rem 0 0 1.5rem' }}>
-                                                    {section.mathSteps.map((step, j) => <li key={j}>{step}</li>)}
-                                                </ol>
-                                            </div>
+                                            <ol style={{ marginTop: '1rem', paddingLeft: '1.5rem' }}>
+                                                {section.mathSteps.map((step, j) => (
+                                                    <li key={j} style={{ marginBottom: '0.5rem' }}>{step}</li>
+                                                ))}
+                                            </ol>
                                         )}
                                     </div>
                                 ))}
-                                {fullNotes.practiceQuestions?.length > 0 && (
-                                    <div style={{ marginTop: '2rem', padding: '1rem', background: 'rgba(52,211,153,0.1)', borderRadius: '8px' }}>
-                                        <h4 style={{ marginBottom: '1rem' }}>📚 Practice Questions</h4>
-                                        {fullNotes.practiceQuestions.map((q, i) => (
-                                            <details key={i} style={{ marginBottom: '0.5rem' }}>
-                                                <summary style={{ cursor: 'pointer', fontWeight: 500 }}>{q.question}</summary>
-                                                <p style={{ marginTop: '0.5rem', paddingLeft: '1rem', color: 'var(--text-muted)' }}>💡 {q.answer}</p>
-                                            </details>
-                                        ))}
+
+                                {fullNotes.summary?.length > 0 && (
+                                    <div style={{ padding: '1rem', background: 'rgba(6,182,212,0.1)', borderRadius: '12px', marginBottom: '1rem' }}>
+                                        <h4 style={{ color: 'var(--accent)', marginBottom: '0.5rem' }}>📌 Key Takeaways</h4>
+                                        <ul style={{ margin: 0, paddingLeft: '1.25rem' }}>
+                                            {fullNotes.summary.map((s, i) => <li key={i} style={{ marginBottom: '0.25rem' }}>{s}</li>)}
+                                        </ul>
                                     </div>
                                 )}
+
+                                <button
+                                    onClick={downloadNotesAsPDF}
+                                    style={{
+                                        width: '100%',
+                                        padding: '0.8rem',
+                                        background: 'linear-gradient(135deg, #10b981, #059669)',
+                                        border: 'none',
+                                        borderRadius: '8px',
+                                        color: '#fff',
+                                        fontWeight: 600,
+                                        cursor: 'pointer',
+                                        fontSize: '1rem'
+                                    }}
+                                >
+                                    📥 Download as Markdown
+                                </button>
                             </>
                         ) : null}
-                        <button className="btn-text" onClick={() => setShowNotesModal(false)} style={{ width: '100%', marginTop: '1.5rem' }}>Close</button>
-                    </div>
-                </div>
+                    </ModalContent>
+                </ModalOverlay>
             )}
         </>
     );
