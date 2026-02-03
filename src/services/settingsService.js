@@ -1,15 +1,16 @@
 /**
  * Settings Service
  * Manages user preferences and API keys in localStorage
+ * NOTE: Users need to provide their own OpenRouter API key from https://openrouter.ai
  */
 
 const SETTINGS_KEY = 'studycraft_settings';
 
 const DEFAULT_SETTINGS = {
     gemini_api_key: '',
-    openrouter_api_key: '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', // Embedded default
-    pexels_api_key: 'EIdFnChjLG764EvXH3aTHNvDyGEd8xJ1dkk3ZOaxxzrifQESxhCCXraq', // Embedded default
-    learning_mode: 'ai', // 'ai' or 'mock' - default to AI mode
+    openrouter_api_key: '', // Users must provide their own key
+    pexels_api_key: 'EIdFnChjLG764EvXH3aTHNvDyGEd8xJ1dkk3ZOaxxzrifQESxhCCXraq',
+    learning_mode: 'mock', // Start in mock mode until user adds API key
     auto_fetch_images: true,
     default_difficulty: 'intermediate'
 };
@@ -59,7 +60,7 @@ export const getSetting = (key) => {
  * Reset to defaults
  */
 export const resetSettings = () => {
-    saveSettings(DEFAULT_SETTINGS);
+    localStorage.removeItem(SETTINGS_KEY); // Clear stored settings
     return DEFAULT_SETTINGS;
 };
 
@@ -68,6 +69,14 @@ export const resetSettings = () => {
  */
 export const hasGeminiKey = () => {
     const key = getSetting('gemini_api_key');
+    return key && key.trim().length > 0;
+};
+
+/**
+ * Check if OpenRouter key is configured
+ */
+export const hasOpenRouterKey = () => {
+    const key = getSetting('openrouter_api_key');
     return key && key.trim().length > 0;
 };
 

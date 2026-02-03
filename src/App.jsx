@@ -70,15 +70,25 @@ function App() {
       const useAI = settings.learning_mode === 'ai';
       let result;
 
-      // Priority: OpenRouter > Gemini > Wikipedia
+      // Priority: OpenRouter > Gemini > Wikipedia (with fallback)
       if (useAI && settings.openrouter_api_key) {
-        console.log('🤖 Using OpenRouter API');
-        result = await generateWithOpenRouter(currentTopic, settings.openrouter_api_key);
+        try {
+          console.log('🤖 Using OpenRouter API');
+          result = await generateWithOpenRouter(currentTopic, settings.openrouter_api_key);
+        } catch (apiError) {
+          console.warn('⚠️ OpenRouter failed, falling back to Wikipedia:', apiError.message);
+          result = await generateFromWikipedia(currentTopic);
+        }
       } else if (useAI && settings.gemini_api_key) {
-        console.log('🌟 Using Gemini API');
-        result = await generateContent(currentTopic, settings.gemini_api_key);
+        try {
+          console.log('🌟 Using Gemini API');
+          result = await generateContent(currentTopic, settings.gemini_api_key);
+        } catch (apiError) {
+          console.warn('⚠️ Gemini failed, falling back to Wikipedia:', apiError.message);
+          result = await generateFromWikipedia(currentTopic);
+        }
       } else {
-        console.log('📚 Using Wikipedia mock mode');
+        console.log('📚 Using Wikipedia mode');
         result = await generateFromWikipedia(currentTopic);
       }
 
